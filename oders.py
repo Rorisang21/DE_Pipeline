@@ -1,8 +1,51 @@
 import pandas as pd
+from sqlalchemy import create_engine
+
+engine = create_engine(
+    "postgresql://postgres:Danamate21.@localhost:5432/postgres"
+)
+
+with engine.connect() as conn:
+    print("Connected successfully")
+customer_df= pd.read_csv(r"C:\Users\ab033yp\Desktop\Upskilling\Building pipelines\Customers.csv")
+
+customer_df ['email']= customer_df ['email'].str.lower()
+
+#change the format of the signup date
+customer_df['signup_date'] = pd.to_datetime(customer_df['signup_date'])
+
+#keeping the earliest date firts 
+customer_df = customer_df.sort_values(by=['signup_date', 'email'])
+
+#dropping the duplicates
+customer_df = customer_df.drop_duplicates(subset='email', keep='first')
+#check email requiremnts 
+customer_df = customer_df[
+    customer_df['email'].str.contains('@') & 
+    customer_df['email'].str.contains('\.')
+]
+customer_df = customer_df.reset_index(drop=True)
+#print (customer_df)
+
+
+#ODER ITEMS 
+
+order_items_df= pd.read_csv(r"C:\Users\ab033yp\Desktop\Upskilling\Building pipelines\Ordersitems.csv")
+order_items_df = order_items_df[
+    (order_items_df['quantity'] > 0) &
+    (order_items_df['unit_price'] > 0)
+]
+order_items_df = order_items_df.reset_index(drop=True)
+
+#print(order_items_df)
+
+#ORDERS
+
+import pandas as pd
 
 
 orders_df = pd.read_json(
-    r"C:\Users\tatty\OneDrive\Desktop\DATA ENGINEERING PROJECT\DATA\oders.jsonl",
+    r"C:\Users\ab033yp\Desktop\Upskilling\Building pipelines\Orders.jsonl",
     lines=True
 )
 
@@ -22,11 +65,10 @@ orders_df['order_ts'] = pd.to_datetime(orders_df['order_ts'], errors='coerce', u
 #removed inavlid timestamps
 orders_df = orders_df[orders_df['order_ts'].notnull()]
 
-valid_customer_ids= orders_df ['customer_id'].unique()
+valid_customer_ids= customer_df ['customer_id'].unique()
 orders_df = orders_df[orders_df['customer_id'].isin(valid_customer_ids)]
 #Reset index 
 orders_df = orders_df.reset_index(drop=True)
 
 # View cleaned data
-print(orders_df)
-print(orders_df['customer_id'].dtype)
+#print(orders_df)
