@@ -1,18 +1,89 @@
-I have created three tables mainly: customers, orders, and order_items. In the creation of these tables, primary keys and foreign keys were used to create a relationship between the tables. 
+# Data Engineering Assignment – Solution
 
-Please notice that in the database the email is constrained to lowercase; this is so that even when someone does bypass the Python script and load directly into the database, the email is still kept lowercase and also to prevent duplication.
+## Overview
 
-Several constraints were applied to ensure data quality:
+This project implements a data pipeline that extracts, transforms, and loads customer, order, and order item data into a PostgreSQL database. The goal was to ensure data quality, enforce constraints, and maintain referential integrity across related datasets.
 
-- NOT NULL constraints on critical fields such as email, order timestamp, and status, if anything gets rejected  there will be  a log letting us know if anything was rejected. 
-- A CHECK constraint on order status to allow only valid values (placed, shipped, cancelled, or refunded)
+---
 
-- CHECK constraints on order_items to ensure quantity and unit price are positive
-Data cleaning and normalization are handled during the transformation stage using Python.
+## Schema Design
 
-The database is responsible for enforcing strict rules and maintaining data integrity. Any data that does not meet the required constraints is rejected at the database level.
+Three tables were created:
 
-Rejected records are logged and tracked to ensure visibility into data quality issues and allow for further investigation if needed.
-I chose to enforce strict constraints at the database level to ensure data reliability and consistency, even if it results in rejecting some records.
+- **customers**
+- **orders**
+- **order_items**
 
-This approach prioritizes data integrity over accepting potentially inconsistent or invalid data.
+The schema includes:
+
+- Primary keys on all tables
+- Foreign key relationships:
+  - `orders.customer_id → customers.customer_id`
+  - `order_items.order_id → orders.order_id`
+- NOT NULL constraints on critical fields
+- A UNIQUE constraint on lowercase email values
+- CHECK constraints:
+  - Valid order statuses (`placed`, `shipped`, `cancelled`, `refunded`)
+  - Positive quantity and unit price in `order_items`
+
+This ensures strong data integrity at the database level.
+
+---
+
+## Data Transformation
+
+### Customers
+
+- Emails were normalized to lowercase
+- Duplicate emails were removed by keeping the earliest `signup_date`
+- Invalid email formats were filtered out
+- Column inconsistencies (e.g., `is_active`) were cleaned and standardized
+
+### Orders
+
+- Status values were normalized (e.g., `processing` → `placed`)
+- Only valid statuses were retained
+- Timestamps were converted to proper datetime format
+- Orders with invalid `customer_id` values were removed to maintain referential integrity
+
+### Order Items
+
+- Rows with `quantity <= 0` or `unit_price <= 0` were removed
+- Records referencing invalid `order_id` values were filtered out
+
+---
+
+## Data Integrity Approach
+
+Data was validated at multiple stages:
+
+- During transformation (Python)
+- During loading (PostgreSQL constraints)
+
+Foreign key violations and duplicate key errors were encountered during development and resolved by refining transformation logic to ensure all relationships were valid before insertion.
+
+---
+
+## Loading Strategy
+
+Data was loaded into PostgreSQL using SQLAlchemy in the following order:
+
+1. customers  
+2. orders  
+3. order_items  
+
+This ensured that all foreign key dependencies were satisfied.
+
+---
+
+## Trade-offs and Decisions
+
+- Invalid records (e.g., bad emails, missing relationships) were removed instead of corrected to prioritize data integrity
+- Transformation logic was aligned closely with database constraints to prevent load-time failures
+- Simplicity was prioritized in the pipeline design to ensure clarity and reproducibility
+
+---
+
+## Conclusion
+
+The final pipeline ensures clean, consistent, and reliable data that adheres to the defined schema and business rules. It demonstrates a structured approach to data engineering, including validation, transformation, and constraint-driven design.
